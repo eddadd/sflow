@@ -1,0 +1,29 @@
+{
+  "name": "@eddadd/sflow",
+  "version": "0.1.0",
+  "description": "sflow 规格驱动 AI 工作流安装器：把 8 条 /sflow-* 命令一键安装到 WorkBuddy / Claude Code / 项目级技能目录",
+  "bin": {
+    "sflow": "bin/sflow.js"
+  },
+  "files": [
+    "bin",
+    "templates"
+  ],
+  "keywords": [
+    "ai",
+    "workflow",
+    "spec-driven",
+    "openspec",
+    "claude-code",
+    "workbuddy",
+    "skills"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eddadd/sflow.git"
+  }
+}

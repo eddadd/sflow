@@ -1,0 +1,4 @@
+node_modules/
+copy-check.txt
+*.log
+.DS_Store
