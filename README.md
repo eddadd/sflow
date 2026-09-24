@@ -4,8 +4,6 @@ sflow 规格驱动 AI 工作流的**安装器**（路线 A）。
 
 sflow 把"先想清楚、再写代码"钉成一条流水线：规划（proposal / specs / design / tasks）→ 执行契约硬门禁 → 按批次实现 → 真实验证 → 审查 → 归档合并主规格。本 CLI 把 8 条 `/sflow-*` 命令一键分发到你的 AI 客户端技能目录。
 
-> 灵感来源：[spec-superflow](https://github.com/)（OpenSpec × superpowers 的融合思路），sflow 是其个人化减配版——4 个人工决策点、强制回退规则、进度台账贯穿全程。
-
 ## 安装
 
 ```bash

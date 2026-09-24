@@ -14,6 +14,12 @@ exploring ──> specifying ──> bridging ──> building ──> verifying
           超出边界 → 自动升级回 full
 ```
 
+**tweak 的"纯配置/文档"判定标准**（边界数值以 workflow.config.md 为准）：
+
+- ✅ 算：`*.md` 文档、`.env*` 环境文件、`workflow.config.md`、纯注释增删
+- ❌ 不算：`vite.config.ts` 等构建配置、`package.json`（依赖变更影响面大）、`src/**` 下任何逻辑代码
+- 判不准 → 按 full 处理，宁可流程重一点，不要边界裸奔
+
 状态一律从工件内容推断，不从聊天记忆或文件时间戳推断。
 
 **building 串行化**：同一时间至多允许一个变更处于 `building`（执行中）；其余活动变更只能停在 `specifying` / `bridging` 并行规划。理由：执行是唯一有写权限的阶段，串行化保证"改动文件清单 vs 契约"的比对不被其他变更干扰。

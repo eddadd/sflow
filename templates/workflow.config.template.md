@@ -14,15 +14,10 @@
 
 <审查工具 skill 名，如 code-cr；留空跳过>
 
-## 快速路径边界（超出自动升级回 full）
+## 快速路径边界（超出自动升级回 full；"纯配置/文档"的判定标准见 core.md 第 1 节）
 
 - tweak: 4   # ≤4 个文件，且纯配置/文档修改
 - hotfix: 2  # ≤2 个文件
-
-### tweak 的"纯配置/文档"判定
-
-- ✅ 算：`*.md` 文档、`.env*` 环境文件、`workflow.config.md`、纯注释增删
-- ❌ 不算：构建配置、`package.json`（依赖变更影响面大）、`src/**` 下任何逻辑代码
 
 ## 强制 full 的情形（不可走快速路径）
 
@@ -32,7 +27,7 @@
 
 ## DP-1 轻量化
 
-- dp1_lightweight: true # 非强制 full 的需求（一句话能说清），propose 将需求确认与工件展示合并为一次确认；强制 full 情形不受此开关影响
+- dp1_lightweight: true # 开关语义见 /sflow-propose 技能定义
 
 ## 变更工件目录
 
