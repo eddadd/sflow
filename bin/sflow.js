@@ -19,12 +19,16 @@ const SKILL_PREFIX = 'sflow-';
 const TEMPLATES_DIR = path.join(__dirname, '..', 'templates', 'skills');
 const CONFIG_TEMPLATE = path.join(__dirname, '..', 'templates', 'workflow.config.template.md');
 
-// 目标客户端 → 技能目录映射
+// 目标客户端 → 技能目录映射（默认 agent；路径规则：~/.<target>/skills/，例外见下）
 const TARGETS = {
+  agent: () => path.join(os.homedir(), '.agent', 'skills'),
+  claude: () => path.join(os.homedir(), '.claude', 'skills'),
+  codex: () => path.join(os.homedir(), '.codex', 'skills'),
   workbuddy: () => path.join(os.homedir(), '.workbuddy', 'skills'),
-  'claude-code': () => path.join(os.homedir(), '.claude', 'skills'),
-  project: () => path.join(process.cwd(), '.workbuddy', 'skills'),
+  trae: () => path.join(os.homedir(), '.trae-cn', 'skills'),
+  opencode: () => path.join(os.homedir(), '.config', 'skills'),
 };
+const DEFAULT_TARGET = 'agent';
 
 /** @returns {string[]} 技能目录名列表 */
 const listTemplateSkills = () =>
@@ -34,7 +38,7 @@ const listTemplateSkills = () =>
     .map((d) => d.name);
 
 /**
- * @function 解析目标目录：--dir 优先，其次 --target，默认 workbuddy
+ * @function 解析目标目录：--dir 优先，其次 --target，默认 agent
  * @param {Object} opts 命令行选项
  * @param {string} [opts.target] 目标客户端名
  * @param {string} [opts.dir] 自定义目录（绝对或相对路径）
@@ -42,7 +46,7 @@ const listTemplateSkills = () =>
  */
 const resolveDest = (opts) => {
   if (opts.dir) return path.resolve(opts.dir);
-  const key = opts.target || 'workbuddy';
+  const key = opts.target || DEFAULT_TARGET;
   const fn = TARGETS[key];
   if (!fn) {
     console.error(`未知目标：${key}（可选：${Object.keys(TARGETS).join(' | ')}，或用 --dir 指定目录）`);
@@ -79,10 +83,13 @@ sflow CLI（${PKG_NAME}）v${VERSION} — 规格驱动 AI 工作流安装器
   sflow --help / -h                                           本帮助
   sflow --version / -v                                        版本号
 
-目标（--target）：
-  workbuddy     ~/.workbuddy/skills/（默认）
-  claude-code   ~/.claude/skills/
-  project       当前目录 .workbuddy/skills/
+目标（--target，默认 agent）：
+  agent         ~/.agent/skills/
+  claude        ~/.claude/skills/
+  codex         ~/.codex/skills/
+  workbuddy     ~/.workbuddy/skills/
+  trae          ~/.trae-cn/skills/
+  opencode      ~/.config/skills/
   或用 --dir <path> 指定任意技能目录
 
 选项：
