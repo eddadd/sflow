@@ -2,3 +2,7 @@ node_modules/
 copy-check.txt
 *.log
 .DS_Store
+.git-commit-msg.txt
+git-*.txt
+where-git.*
+git-run.js
