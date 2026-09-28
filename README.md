@@ -17,11 +17,11 @@ sflow init
 
 ## 支持的目标
 
-默认安装到 `~/.agent/skills/`；指定目标用 `--target`，路径规则为 `~/.<target>/skills/`（例外见下）：
+默认安装到 `~/.agents/skills/`；指定目标用 `--target`，路径规则为 `~/.<target>/skills/`（例外见下）：
 
 | 目标 | 目录 | 命令 |
 |------|------|------|
-| agent（默认） | `~/.agent/skills/` | `sflow init` |
+| agents（默认） | `~/.agents/skills/` | `sflow init` |
 | claude | `~/.claude/skills/` | `sflow init --target claude` |
 | codex | `~/.codex/skills/` | `sflow init --target codex` |
 | workbuddy | `~/.workbuddy/skills/` | `sflow init --target workbuddy` |

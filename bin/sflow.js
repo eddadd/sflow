@@ -19,16 +19,16 @@ const SKILL_PREFIX = 'sflow-';
 const TEMPLATES_DIR = path.join(__dirname, '..', 'templates', 'skills');
 const CONFIG_TEMPLATE = path.join(__dirname, '..', 'templates', 'workflow.config.template.md');
 
-// 目标客户端 → 技能目录映射（默认 agent；路径规则：~/.<target>/skills/，例外见下）
+// 目标客户端 → 技能目录映射（默认 agents；路径规则：~/.<target>/skills/，例外见下）
 const TARGETS = {
-  agent: () => path.join(os.homedir(), '.agent', 'skills'),
+  agents: () => path.join(os.homedir(), '.agents', 'skills'),
   claude: () => path.join(os.homedir(), '.claude', 'skills'),
   codex: () => path.join(os.homedir(), '.codex', 'skills'),
   workbuddy: () => path.join(os.homedir(), '.workbuddy', 'skills'),
   trae: () => path.join(os.homedir(), '.trae-cn', 'skills'),
   opencode: () => path.join(os.homedir(), '.config', 'skills'),
 };
-const DEFAULT_TARGET = 'agent';
+const DEFAULT_TARGET = 'agents';
 
 /** @returns {string[]} 技能目录名列表 */
 const listTemplateSkills = () =>
@@ -38,7 +38,7 @@ const listTemplateSkills = () =>
     .map((d) => d.name);
 
 /**
- * @function 解析目标目录：--dir 优先，其次 --target，默认 agent
+ * @function 解析目标目录：--dir 优先，其次 --target，默认 agents
  * @param {Object} opts 命令行选项
  * @param {string} [opts.target] 目标客户端名
  * @param {string} [opts.dir] 自定义目录（绝对或相对路径）
@@ -83,8 +83,8 @@ sflow CLI（${PKG_NAME}）v${VERSION} — 规格驱动 AI 工作流安装器
   sflow --help / -h                                           本帮助
   sflow --version / -v                                        版本号
 
-目标（--target，默认 agent）：
-  agent         ~/.agent/skills/
+目标（--target，默认 agents）：
+  agents        ~/.agents/skills/
   claude        ~/.claude/skills/
   codex         ~/.codex/skills/
   workbuddy     ~/.workbuddy/skills/

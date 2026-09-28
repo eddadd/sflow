@@ -1,7 +1,7 @@
 {
   "name": "@eddadd/sflow",
   "version": "0.1.0",
-  "description": "sflow 规格驱动 AI 工作流安装器：把 8 条 /sflow-* 命令一键安装到 agent / claude / codex / workbuddy / trae / opencode 技能目录",
+  "description": "sflow 规格驱动 AI 工作流安装器：把 8 条 /sflow-* 命令一键安装到 agents / claude / codex / workbuddy / trae / opencode 技能目录",
   "bin": {
     "sflow": "bin/sflow.js"
   },
