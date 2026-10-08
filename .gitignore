@@ -6,3 +6,7 @@ copy-check.txt
 git-*.txt
 where-git.*
 git-run.js
+.opencode/*
+.workbuddy/*
+.claude/*
+.agents/*
