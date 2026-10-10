@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const VERSION = '0.1.1';
+const VERSION = '0.1.2';
 const PKG_NAME = '@eddadd/sflow';
 const SKILL_PREFIX = 'sflow-';
 
