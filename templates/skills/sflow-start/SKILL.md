@@ -10,7 +10,7 @@ sflow 工作流入口：基于工件内容（而非时间戳）检测当前所�
 ## 第一步：读取项目配置
 
 1. 读取项目根目录 `workflow.config.md`。
-2. 文件不存在时：读取本技能 `assets/workflow.config-template.md`，就验证链、审查工具、快速路径边界三项逐一向用户确认后，生成该文件再继续。不得跳过配置猜测验证命令。
+2. 文件不存在时：读取本技能 `assets/workflow.config-template.md`，就验证链、测试工具、审查工具、快速路径边界各项逐一向用户确认后，生成该文件再继续。不得跳过配置猜测验证命令。
 3. 记录配置中的：`verification`（验证链）、`review_tool`、`fast_path`（tweak/hotfix 边界）、`changes_dir`（变更工件目录，默认 `openspec/changes/`）。
 
 ## 第二步：内容级状态检测

@@ -26,7 +26,7 @@ description: sflow 工作流的验证收口命令。当用户说 "/sflow-verify"
 
 验证链全部通过后，读取 workflow.config.md「测试工具」配置：
 
-**配置了测试技能（如 glodrapay-test）**：
+**配置了测试技能（如 glodrapay-front-test）**：
 
 1. 加载该技能（按所在平台的技能调用机制）并执行其测试流程：定位本变更 tasks.md 的验收标准编号作为测试依据 → 代码走查（按该技能分级，如 R1 功能 / R2 响应性 / R3 规范）→ 依验收标准编写测试 → 真实执行并贴输出 → 按该技能约定生成测试报告。
 2. 测试报告路径与结论记入 progress.md 验证记录表；断言明细与走查证据作为下方三维判定 Correctness 的依据。
