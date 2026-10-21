@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const VERSION = '0.1.2';
+const VERSION = '0.1.3';
 const PKG_NAME = '@eddadd/sflow';
 const SKILL_PREFIX = 'sflow-';
 
@@ -126,6 +126,17 @@ const runInit = (opts) => {
   for (const name of skills) {
     copyDir(path.join(TEMPLATES_DIR, name), path.join(dest, name));
     console.log(`  ✔ ${name} → ${path.join(dest, name)}`);
+  }
+
+  // 单一源同步：sflow-start 的内置配置模板以根模板为唯一母本，安装时生成，
+  // 避免仓库内双副本各自维护导致漂移（历史上曾因此出现旧版模板被分发的事故）。
+  const assetPath = path.join(dest, 'sflow-start', 'assets', 'workflow.config-template.md');
+  if (fs.existsSync(CONFIG_TEMPLATE)) {
+    fs.mkdirSync(path.dirname(assetPath), { recursive: true });
+    fs.copyFileSync(CONFIG_TEMPLATE, assetPath);
+    console.log(`  ✔ ${path.relative(dest, assetPath).replaceAll('\\', '/')} ← 根模板同步`);
+  } else {
+    console.log('  - 未找到 workflow.config.template.md，跳过 sflow-start 模板同步');
   }
 
   if (opts.config) {
