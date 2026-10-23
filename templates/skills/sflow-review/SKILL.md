@@ -10,7 +10,7 @@ description: sflow 工作流的审查阶段命令。当用户说 "/sflow-review"
 ## 前置检查
 
 1. 加载共享约定 core.md（单一母本：`sflow-start/references/core.md`，本目录不再保留副本）与项目 `workflow.config.md`。
-2. 状态检测：`/sflow-verify` 已通过（progress.md 验证记录表全绿）。验证未通过 → 拒绝审查，指回 `/sflow-verify`。
+2. 状态检测：state.yaml 回执流中存在 `verify.passed` 且其后没有新的实现改动（无 state.yaml 的存量变更以 progress.md 验证记录表全绿为准）。验证未通过 → 拒绝审查，指回 `/sflow-verify`。
 3. 读取 `review_tool` 配置：
    - 配置了工具（如 code-cr）→ 确认工具可用（查找项目内工具目录/命令说明，如 `code-cr/`）；不可用时**询问用户**如何调用，不得静默跳过审查。
    - 配置为空 → 执行下方「内置默认审查」，审查不得跳过。
@@ -21,11 +21,11 @@ description: sflow 工作流的审查阶段命令。当用户说 "/sflow-review"
 
 1. 逐文件比对契约行为与实际实现，引用文件/行/契约条款作为每条结论的依据。
 2. 问题按 Critical / Important / Minor 三级归类输出，格式与外挂工具一致。
-3. 结论记入 progress.md（格式同下），Critical 未清零同样阻塞归档。
+3. 结论写入 state.yaml（`review.passed` 或 `review.blocked`，含三级计数）并在 progress.md 记一条同样格式的叙述，Critical 未清零同样阻塞归档。
 
 ## 审查范围
 
-- 改动基线：progress.md 的 `review_base` 行（DP-2 批准时写入的起点 commit）——执行 `git diff --name-only <review_base>..HEAD`（含未提交改动时用 `git diff --name-only <review_base>`）得到真实改动清单；**不得**以 progress.md 里 AI 自述的"改动文件清单"为基线
+- 改动基线：state.yaml 的 `baseline.review_base`（首次 DP-2 批准时写入的起点 commit；无 state.yaml 的存量变更用 progress.md 同名记录）——执行 `git diff --name-only <review_base>..HEAD -- . ':(exclude)openspec/changes/<change-name>'`（含未提交改动时去掉 `..HEAD`），**排除变更工件目录本身**后得到真实业务改动清单；**不得**以 progress.md 里 AI 自述的"改动文件清单"为基线
 - 审查维度：契约符合度（行为 vs 已批准行为）、需求覆盖（漏实现）、编码规范（项目 AGENTS.md / docs/*.md）、副作用（范围外文件、公共组件影响面、样式与枚举规范）
 
 ## 三级严重度归类
@@ -36,7 +36,7 @@ description: sflow 工作流的审查阶段命令。当用户说 "/sflow-review"
 | Important | 规范违反、边界缺失、可维护性隐患 | 应修：修复或经用户确认延后并记录 |
 | Minor | 命名、注释措辞、风格细节 | 记录：不阻塞，留给后续 |
 
-审查结论记入 progress.md：`review：<时间> Critical n / Important n / Minor n <阻塞与否>`。
+审查结论：在 state.yaml 追加 `review.passed` 或 `review.blocked`（`counts: { critical: n, important: n, minor: n }`），progress.md 同步记一条 `review：<时间> Critical n / Important n / Minor n <阻塞与否>`。
 
 ## 修复循环
 

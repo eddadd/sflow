@@ -1,0 +1,26 @@
+# sflow 状态回执（schema v1）——约定见 core.md 第 11 节
+#
+# 只追加、不改写；大阶段由工件推导，不写在此文件。
+# 每条回执写成单行 flow mapping，便于机械解析。
+# 时间取系统当前时间，格式 ISO 8601 带时区。
+
+schema: sflow-state/v1
+change: <change-name>
+
+baseline:
+  # 首次 DP-2 批准时写入 git rev-parse HEAD 的结果；只写一次，重新桥接也不得改写。
+  review_base: null
+
+receipts: []
+# 示例（按实际事件追加，不要照抄）：
+# - { at: 2026-10-23T10:12:00+08:00, cmd: /sflow-propose,  event: dp1.approved }
+# - { at: 2026-10-23T14:03:00+08:00, cmd: /sflow-contract, event: dp2.approved, review_base: 9f2c1ab, fingerprints: { artifacts: { proposal.md: <sha>, design.md: <sha> }, tasks: <sha>, contract: <sha> } }
+# - { at: 2026-10-23T16:40:00+08:00, cmd: /sflow-apply,    event: batch.1.done, files: [src/a.ts], verification: passed }
+# - { at: 2026-10-23T17:20:00+08:00, cmd: /sflow-debug,    event: debug.attempt.1, hypothesis: <一句话假设>, result: failed }
+# - { at: 2026-10-23T18:00:00+08:00, cmd: /sflow-verify,   event: verify.passed }
+# - { at: 2026-10-23T18:20:00+08:00, cmd: /sflow-review,   event: review.passed, counts: { critical: 0, important: 2, minor: 5 } }
+# - { at: 2026-10-23T18:30:00+08:00, cmd: /sflow-archive,  event: archive.done }
+
+counters:
+  # 连续失败尝试计数；debug 每次失败 +1，成功或换方向时归零。DP-3 在 >= 3 时机械触发。
+  debug_attempts: 0

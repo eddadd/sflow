@@ -10,3 +10,4 @@ git-run.js
 .workbuddy/*
 .claude/*
 .agents/*
+.cortexkit/*

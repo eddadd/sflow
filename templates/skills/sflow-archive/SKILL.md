@@ -10,8 +10,8 @@ description: sflow 工作流的归档收口命令。当用户说 "/sflow-archive
 ## 前置检查（缺一不可，否则拒绝归档）
 
 1. 加载共享约定 core.md（单一母本：`sflow-start/references/core.md`，本目录不再保留副本）。
-2. 状态检测：progress.md 中验证记录表全绿（/sflow-verify 通过）**且**有 `/sflow-review` 的审查结论记录（`review：<时间> Critical n / Important n / Minor n`）且阻塞 Critical 为 0（或用户明确确认跳过审查）。**没有审查结论记录 = 审查未发生**，不允许把"验证通过"当作"审查通过"——两者是不同环节，前者证明跑得过，后者证明改得对。
-3. 不满足 → 拒绝归档，输出阶段报告指回缺失环节（缺审查 → `/sflow-review`；验证不全绿 → `/sflow-verify`）。
+2. 状态检测：state.yaml 回执流末条为 `review.passed` 且其中 `counts.critical == 0`（或用户明确确认跳过审查并留有 `override` 回执）。**没有 `review.passed` = 审查未发生**，不允许把"验证通过"当作"审查通过"——两者是不同环节，前者证明跑得过，后者证明改得对。存量变更（无 state.yaml）回退 progress.md 的审查结论记录。
+3. 不满足 → 拒绝归档，输出阶段报告指回缺失环节（缺审查 → `/sflow-review`；验证未过 → `/sflow-verify`）。
 
 ## DP-4：归档确认（人工决策）
 
@@ -27,8 +27,8 @@ description: sflow 工作流的归档收口命令。当用户说 "/sflow-archive
 
 1. **合并主规格**：按批准的方案把 delta 合并进 `openspec/specs/`——ADDED 追加、MODIFIED 原位改写、REMOVED 删除。**合并时保留主规格既有结构头格式，不强制转换**：主规格用什么结构头（中文或英文），合并结果就继续用哪种；delta 与主规格格式不一致时以**主规格**为准并如实记录差异，不得借合并"顺手"把主规格改头换面（那会让历史条款标题漂移，破坏后续变更的标题匹配）。
 
-2. **移动变更目录**：整个变更目录（含 `.openspec.yaml`）移入 `openspec/changes/archive/`，保留全部工件与 progress.md 作审计证据。目录结构与 OpenSpec CLI 兼容，`.openspec.yaml` 保留不删，确保 OpenSpec CLI 仍能识别归档记录（core.md 第 4 节）。
-3. **收尾登记**：progress.md 末尾追加终态记录：`done：<日期> 已归档，delta 已合并`；状态写 done。
+2. **移动变更目录**：整个变更目录（含 `.openspec.yaml`、`state.yaml`）移入 `openspec/changes/archive/`，保留全部工件与台账作审计证据。目录结构与 OpenSpec CLI 兼容，`.openspec.yaml` 保留不删，确保 OpenSpec CLI 仍能识别归档记录（core.md 第 4 节）。
+3. **收尾登记**：**先**在 state.yaml 追加 `archive.done` 回执（合并完成后、移动目录前写入，回执随目录一起归档），**再**移动目录；progress.md 末尾追加终态记录：`done：<日期> 已归档，delta 已合并`。
 4. 主规格合并处出现冲突或语义含糊时**停下询问用户**，不得自行取舍。
 
 ## 阶段报告（强制收尾）

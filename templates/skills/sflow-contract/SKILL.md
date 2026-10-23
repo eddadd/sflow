@@ -11,7 +11,7 @@ description: sflow 工作流的桥接阶段命令。当用户说 "/sflow-contrac
 
 1. 加载共享约定 core.md（单一母本：`sflow-start/references/core.md`，本目录不再保留副本）。
 2. 读取项目 `workflow.config.md`。
-3. 状态检测：确认活动变更的四份工件齐全，且 DP-1 已在 progress.md 记录批准。DP-1 未批准 → 拒绝生成契约，输出阶段报告指回 `/sflow-propose`。
+3. 状态检测：确认活动变更的四份工件齐全，且 state.yaml 中存在 `dp1.approved` 回执（无 state.yaml 的存量变更以 progress.md 批准记录为准）。DP-1 未批准 → 拒绝生成契约，输出阶段报告指回 `/sflow-propose`。
 4. 工件语言：契约用简体中文，代码标识符和 schema 关键字保持原样。
 
 ## 生成执行契约
@@ -39,13 +39,14 @@ description: sflow 工作流的桥接阶段命令。当用户说 "/sflow-contrac
 向用户展示：契约全文 + 需求覆盖映射表 + 识别到的歧义点。请求**明确批准**。
 
 - 未批准：记录修改意见，迭代契约后重新展示。
-- 批准：在 progress.md 记录 `DP-2 批准：<时间> <结论摘要>`；随后按 core.md 第 3 节生成**三个**指纹记入 progress.md 的"工件指纹"表：
+- 批准：**在 state.yaml 追加一条 `dp2.approved` 回执**，它是 DP-2 批准的唯一机械证据（格式见 core.md 第 11 节）。回执内容：
 
-  1. `artifacts_hash`：对 `proposal.md`、`specs/` 下全部 `spec.md`、`design.md` 逐个执行 `git hash-object <file>`；
-  2. `tasks_hash`：对 `tasks.md` **先剥离复选框再哈希**（逐字照用 core.md 第 3 节的命令，不得自行改写归一化逻辑）——勾选任务是执行进度不是规划范围，直接哈希原文会让批次勾选动作本身误判契约过期；
-  3. `contract_hash`：对 `execution-contract.md` 执行 `git hash-object execution-contract.md`。
+  1. `fingerprints.artifacts`：对 `proposal.md`、`specs/` 下全部 `spec.md`、`design.md` 逐个执行 `git hash-object <file>`；
+  2. `fingerprints.tasks`：对 `tasks.md` **先剥离复选框再哈希**（逐字照用 core.md 第 3 节的命令，不得自行改写归一化逻辑）——勾选任务是执行进度不是规划范围，直接哈希原文会让批次勾选动作本身误判契约过期；
+  3. `fingerprints.contract`：对 `execution-contract.md` 执行 `git hash-object execution-contract.md`；
+  4. `review_base`：执行 `git rev-parse HEAD` 取 commit sha，**仅首次 DP-2 批准时写入**，并同步写入 `baseline.review_base`（只写一次，后续含重新桥接都不得改写）。
 
-  再执行 `git rev-parse HEAD` 把结果记入"工件指纹"表的 `review_base` 行（审查与范围比对基线，**只写一次**，后续命令不得改写）。最后把状态改为 building。
+  随后把状态改为 building，progress.md 只记一句"DP-2 批准 + 回执已写入 state.yaml"，**不再抄写哈希值**。
 
 **硬规则**：
 - 不得替用户批准契约。
@@ -63,7 +64,7 @@ description: sflow 工作流的桥接阶段命令。当用户说 "/sflow-contrac
 - 契约自身条款被改动（`contract_hash` 变）
 - 契约意图锁与 proposal 范围不再匹配
 
-判定方式：重算三个指纹与 progress.md"工件指纹"表比对，任一不一致即过期——机械判定，不靠人眼。
+判定方式：重算三个指纹，与 state.yaml 中**最后一条** `dp2.approved` 回执的 `fingerprints` 比对，任一不一致即过期——机械判定，不靠人眼。重新生成契约并获批时**追加新的 `dp2.approved`**，不改写旧条目；`baseline.review_base` 始终不变。存量变更（无 state.yaml）回退 progress.md 的"工件指纹"表比对。
 
 ## 阶段报告（强制收尾）
 

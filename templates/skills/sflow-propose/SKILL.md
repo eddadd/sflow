@@ -42,8 +42,9 @@ description: sflow 工作流的规划阶段命令。当用户说 "/sflow-propose
 3. `design.md` — 技术选型、接口/依赖/数据约束、关键决策及理由
 4. `tasks.md` — 有序任务清单，任务粒度可独立验证
 5. `.openspec.yaml` — 内容为 `schema: spec-driven` 与 `created: <日期>`（与 OpenSpec CLI 共存的元数据，见 core.md 第 4 节）
+6. `state.yaml` — 按 `assets/state.yaml` 模板创建（`change` 填目录名，`receipts: []`），这是状态回执的起点（core.md 第 11 节）
 
-change-name 用英文短横线命名（如 `add-order-export`），目录内工件用中文。
+change-name 用英文短横线命名（如 `add-order-export`），目录内工件用中文。`state.yaml` 只追加回执，**禁止**在其中写状态枚举或叙述性内容。
 
 ## 工件自检（写完必过）
 
@@ -52,6 +53,7 @@ change-name 用英文短横线命名（如 `add-order-export`），目录内工�
 - [ ] Out of Scope 非空——明确写了不做什么
 - [ ] tasks 与 specs 的每条 Requirement 可对应（映射关系在 DP-1 时展示）
 - [ ] 无占位符残留（TODO、xxx、待定）
+- [ ] `state.yaml` 已创建，`change` 与目录名一致，`receipts` 为合法 YAML 列表
 - [ ] 结构头兼容：涉及既有主 spec 时，delta 的章节头/需求标题/场景标题与主 spec 现实格式**逐字一致**（归档合并按标题精确匹配，格式漂移会导致匹配失败）；主规格不存在时用中文标准格式；同一变更内无中英结构头混用
 - [ ] 增强预检检查清单全部通过（简单需求按豁免规则跳过的除外，需在 DP-1 注明）
 
@@ -61,7 +63,7 @@ change-name 用英文短横线命名（如 `add-order-export`），目录内工�
 
 **轻量化开关**：workflow.config.md 配置 `dp1_lightweight: true` 且需求不属强制 full 情形（见 config 强制 full 清单）时，可将需求确认与工件展示合并为一次确认；强制 full 情形不受开关影响，仍分步确认。
 
-**硬规则**：DP-1 未批准，不得建议用户执行 `/sflow-contract`，更不得写任何业务代码。DP-1 批准后，在台账 progress.md 记录批准时间与结论。
+**硬规则**：DP-1 未批准，不得建议用户执行 `/sflow-contract`，更不得写任何业务代码。DP-1 批准后，**在 state.yaml 追加 `dp1.approved` 回执**（这是批准发生的唯一机械证据），progress.md 只写一句批准时间与结论作为叙述。
 
 ## 阶段报告（强制收尾）
 

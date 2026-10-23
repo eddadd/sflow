@@ -10,17 +10,18 @@ description: sflow 工作流的验证收口命令。当用户说 "/sflow-verify"
 ## 前置检查
 
 1. 加载共享约定 core.md（单一母本：`sflow-start/references/core.md`，本目录不再保留副本）与项目 `workflow.config.md`。
-2. 状态检测：tasks.md 全部勾选且 progress.md 记录"执行完成"。未完成 → 拒绝验证，输出阶段报告指回 `/sflow-apply`。
+2. 状态检测：tasks.md 全部勾选，且 state.yaml 回执流末条为 `batch.N.done`（无 state.yaml 的存量变更以 progress.md"执行完成"为准）；若末条已是 `verify.passed`/`verify.failed`，说明验证已发生过 → 默认不重复验证，如实告知用户并请其确认是否重跑。未执行完成 → 拒绝验证，输出阶段报告指回 `/sflow-apply`。
 
 ## 验证链执行（核心动作）
 
 1. 从 `workflow.config.md` 的 `verification` 逐条读取命令。
 2. **每条真实执行**，完整贴出命令与输出（包括无输出时的退出码）。
 3. 任何一条失败：
+   - 在 state.yaml 追加 `verify.failed` 回执（含失败命令）
    - 在 progress.md 验证记录表登记失败详情
    - 触发 DP：向用户呈报失败项，由用户决定转 `/sflow-debug` 修复后重验，还是放弃变更
    - **不得**自行重试超过一次，不得跳过失败项继续判"通过"
-4. 全部通过 → 在 progress.md 验证记录表逐条登记（时间 / 命令 / 结果）。
+4. 全部通过 → 在 state.yaml 追加 `verify.passed` 回执，并在 progress.md 验证记录表逐条登记（时间 / 命令 / 结果）。
 
 ## 深度验证（可插拔 + 内置默认）
 
@@ -50,13 +51,13 @@ description: sflow 工作流的验证收口命令。当用户说 "/sflow-verify"
 |------|--------|--------|
 | Completeness 完整性 | 需求无遗漏 | specs 每条 Requirement 都能对应到已完成的任务与验证义务 |
 | Correctness 正确性 | 行为符合契约 | 契约"关键场景/验收检查"逐条比对实现行为 |
-| Coherence 一致性 | 改动无越界 | 以 progress.md 的 `review_base` 为基线执行 `git diff --name-only <review_base>..HEAD`（含工作区未提交改动时用 `git diff --name-only <review_base>`），把输出与契约"任务批次"的文件清单逐项比对；**不得**用 progress.md 里 AI 自己写的"改动文件清单"当证据——那是被审查对象的自述，不是独立证据 |
+| Coherence 一致性 | 改动无越界 | 以 `baseline.review_base` 为基线执行 `git diff --name-only <review_base>..HEAD -- . ':(exclude)openspec/changes/<change-name>'`（含工作区未提交改动时去掉 `..HEAD`），**必须排除变更工件目录本身**（工件、progress.md、state.yaml 是流程产物，不是业务改动）；把输出与契约"任务批次"的文件清单逐项比对。**不得**用 progress.md 里 AI 自己写的"改动文件清单"当证据——那是被审查对象的自述，不是独立证据 |
 
 任何一维不通过：在 progress.md 记录结论与差异说明，触发 DP 交用户决定（回 `/sflow-apply` 修复或放弃变更）。**不得**带着不通过判定进入归档。
 
 ## 快速路径收口
 
-hotfix/tweak 不走本命令的完整三维判定，但**验证链仍必须真实跑完并贴输出**（core.md 第 7 节，快速路径只豁免文书，不豁免验证），结果登记到 `quick-<name>/progress.md` 台账并标记收口。
+hotfix/tweak 不走本命令的完整三维判定，但**验证链仍必须真实跑完并贴输出**（core.md 第 7 节，快速路径只豁免文书，不豁免验证），结果登记到 `quick-<name>/progress.md` 台账，并在 `quick-<name>/state.yaml` 追加 `verify.passed` 回执后标记收口。
 
 ## 阶段报告（强制收尾）
 

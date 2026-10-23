@@ -27,9 +27,9 @@ exploring ──> specifying ──> bridging ──> building ──> verifying
 | 判定对象 | 来源 |
 |---------|------|
 | 大阶段（上面的 8 个） | 工件内容（四工件是否齐全、契约是否存在、tasks 是否勾完） |
-| 阶段内位置（验证是否通过、审查是否通过、调试是否进行中） | progress.md 台账**末行**的性质：末条是"验证记录全绿"→ 待审查；末条是"review：…"→ 待归档；末条是"Attempt n"→ 调试中 |
+| 阶段内位置（验证是否通过、审查是否通过、调试是否进行中） | `state.yaml` 回执流**末条**（第 11 节）；无 state.yaml 的存量变更回退 progress.md 台账末行：末条"验证记录全绿"→ 待审查；末条"review：…"→ 待归档；末条"Attempt n"→ 调试中 |
 
-禁止只用工件推断阶段内位置：`verifying` 工件齐全 ≠ 验证已通过 ≠ 审查已通过，三者必须由台账末行区分。
+禁止只用工件推断阶段内位置：`verifying` 工件齐全 ≠ 验证已通过 ≠ 审查已通过，三者必须由回执末条（存量变更用台账末行）区分。
 
 **building 串行化**：同一时间至多允许一个变更处于 `building`（执行中）；其余活动变更只能停在 `specifying` / `bridging` 并行规划。理由：执行是唯一有写权限的阶段，串行化保证"改动文件清单 vs 契约"的比对不被其他变更干扰。
 
@@ -54,7 +54,7 @@ exploring ──> specifying ──> bridging ──> building ──> verifying
 
 反模式一句话：契约变了，工件就必须跟着变（If the contract changed, the artifacts changed）。
 
-**工件指纹（机械扳机）**：DP-2 批准时生成三个指纹，全部记入 progress.md 的"工件指纹"表：
+**工件指纹（机械扳机）**：DP-2 批准时生成三个指纹，记入 state.yaml 的 `dp2.approved` 回执（第 11 节；progress.md 不再抄写哈希值）：
 
 | 指纹 | 计算对象 | 命令 |
 |------|---------|------|
@@ -68,7 +68,7 @@ exploring ──> specifying ──> bridging ──> building ──> verifying
 
 `/sflow-apply` 每个批次开始前（含会话中断恢复时）重算三个指纹比对，任一不一致 → 机械判定契约过期，立即停止执行并回 `/sflow-contract`，不得"先做完这批再说"。AI 只负责执行命令与比对字符串，判定是确定性的。
 
-**审查基线（review_base）**：DP-2 批准时同时执行 `git rev-parse HEAD`，把结果记入 progress.md"工件指纹"表的 `review_base` 行。这是审查与范围比对的起点，**只写一次**，后续任何命令不得改写它。`/sflow-verify` 做一致性判定、`/sflow-review` 确定审查范围时都以它为基线。
+**审查基线（review_base）**：首次 DP-2 批准时执行 `git rev-parse HEAD`，写入 state.yaml 的 `baseline.review_base` 与首条 `dp2.approved` 回执。这是审查与范围比对的起点，**只写一次**，后续任何命令（含重新桥接）不得改写它。`/sflow-verify` 做一致性判定、`/sflow-review` 确定审查范围时都以它为基线。
 
 ## 4. 工件目录布局（结构兼容 OpenSpec）
 
@@ -80,13 +80,15 @@ openspec/changes/<change-name>/
 ├── design.md              # 技术决策
 ├── tasks.md               # 有序任务清单
 ├── execution-contract.md  # 桥接产物
-└── progress.md            # 执行台账：路径选择、工件指纹、任务状态、验证记录、attempt 记录
+├── progress.md            # 执行台账：叙述、命令与真实输出、证据
+└── state.yaml             # 状态回执：审查基线 + append-only 事件流（机械可读，第 11 节）
 
 openspec/changes/quick-<name>/     # 快速路径台账（tweak/hotfix 专用，不建四工件）
-└── progress.md            # 意图 + 改动清单 + 验证输出
+├── progress.md            # 意图 + 改动清单 + 验证输出
+└── state.yaml             # 路径选择回执与验证回执
 ```
 
-归档后并入 `openspec/changes/archive/<date>-<change-name>/`，delta spec 同步合并回主规格 `openspec/specs/`，防规格腐烂。
+归档后并入 `openspec/changes/archive/<date>-<change-name>/`，delta spec 同步合并回主规格 `openspec/specs/`，防规格腐烂。state.yaml 随目录整体移动，不单独摘除。
 
 **与 OpenSpec CLI 共存（仅结构层面）**：变更目录结构、`.openspec.yaml` 元数据、archive 命名 `archive/<date>-<change-name>/` 均保持与 OpenSpec CLI 兼容；`.openspec.yaml` 随目录创建、随归档移动，任何阶段不得删除，确保 OpenSpec CLI 仍能识别变更与归档记录。
 
@@ -166,4 +168,79 @@ spec 的结构头（需求章节标题、需求标题、场景标题）**必须�
 | 场景要点 | `- **当** …` / `- **那么** …` / `- **并且** …` | — |
 
 **禁止**在同一变更内混用中英结构头，**禁止**把 `### Requirement:` / `#### Scenario:` 写进以中文结构头为主规格的项目——那会被归档合并遗漏。历史归档目录（`changes/archive/`）中已存在的英文结构头是历史痕迹，**不要为"统一格式"去改写已归档文件**：归档是审计证据，只进不出。
+
+## 11. 状态回执（state.yaml，机械可读）
+
+**要解决的问题**：工件只能证明大阶段，证明不了阶段内走到哪一步；只看 progress.md 散文，换会话、换模型就可能把"验证过"读成"没验证"，把"审查过"读成"没审查"。
+
+**位置**：`<changes_dir>/<change-name>/state.yaml`，与 progress.md 同级。归档时随变更目录整体移动，不单独摘除、不单独清理。
+
+**最小 schema**（任何命令都可以按此内联创建，不依赖其他技能目录下的模板；完整带注释版见 `sflow-propose/assets/state.yaml`）：
+
+```yaml
+schema: sflow-state/v1
+change: <目录名>
+baseline:
+  review_base: null
+receipts: []
+counters:
+  debug_attempts: 0
+```
+
+**原则：可推导的不存。** 大阶段由工件推导，**不写进 state.yaml**；state.yaml 只存两类不可推导的事实——**锚点**与**回执**：
+
+| 域 | 内容 | 写入规则 |
+|----|------|---------|
+| `baseline.review_base` | 首次 DP-2 批准时的 `git rev-parse HEAD` | **只写一次**；重新桥接也不得改写（它标记"本次变更进入执行前的起点"，跨重桥接保持首次值，防止用重桥接洗掉早前的越界改动） |
+| `receipts[]` | append-only 事件流 | 只追加，**不得修改、删除、重排已有条目** |
+| `counters.debug_attempts` | 连续失败尝试计数 | 由 `debug.attempt.N` 派生；DP-3 按它机械触发 |
+
+**当前指纹 = 最后一条 `dp2.approved` 回执里的 `fingerprints`**（三组：`artifacts` / `tasks` / `contract`）。重新生成契约并再次获得 DP-2 批准时**追加一条新的 `dp2.approved`**，不改写旧条目——旧哈希留在历史里，篡改一眼可见。
+
+**写入时机（每条命令收尾必做；缺回执即视为该步未发生）**：
+
+| 命令 | 追加回执 |
+|------|---------|
+| /sflow-propose | 创建 state.yaml；DP-1 批准 → `dp1.approved` |
+| /sflow-contract | DP-2 批准 → `dp2.approved`（含三组指纹；首次含 `review_base`） |
+| /sflow-apply | 每批次完成 → `batch.N.done`（含改动文件、验证义务结果摘要） |
+| /sflow-debug | 每次尝试 → `debug.attempt.N`（含假设、结果）；解决 → `debug.resolved` |
+| /sflow-verify | `verify.passed` 或 `verify.failed` |
+| /sflow-review | `review.passed` 或 `review.blocked`（含 Critical/Important/Minor 计数） |
+| /sflow-archive | `archive.done`（合并主规格后、移动目录前写入，随目录一起归档） |
+| /sflow-start | 路径选择 → `path.selected`（full / tweak / hotfix）；用户选择非推荐路径时追加 `override`（含推荐项、实际选择、理由）；仅查询状态时不写 |
+
+**回执格式**（单行 flow mapping，便于机械解析；`at` 取系统当前时间，不得编造）：
+
+```yaml
+- { at: 2026-10-23T14:03:00+08:00, cmd: /sflow-contract, event: dp2.approved, review_base: 9f2c1ab, fingerprints: { artifacts: {...}, tasks: <sha>, contract: <sha> } }
+```
+
+**读法：阶段内位置 = 回执流最后一条**（不再靠解读散文）：
+
+| 末条回执 | 阶段内位置 | 下一步 |
+|---------|-----------|--------|
+| `dp2.approved` / `batch.N.done`（tasks 未勾完） | building | `/sflow-apply` |
+| `debug.attempt.N`（其后无 `debug.resolved`） | debugging | 继续调试，或按 DP-3 呈报 |
+| `verify.failed` | debugging（验证失败） | `/sflow-debug` |
+| `verify.passed` | reviewing | `/sflow-review` |
+| `review.blocked` | building（修复） | `/sflow-apply` 或 `/sflow-debug` |
+| `review.passed` | archiving | `/sflow-archive` |
+| `archive.done` | done | `none` |
+
+**冲突处理（不许猜、不许自动修）**：
+
+- 工件与回执矛盾（如 tasks 未勾完却存在 `verify.passed`）→ 伪回执，停止并呈报。
+- `state.yaml` 的 `change` 与所在目录名不一致 → 停止并呈报。
+- 首次 `dp2.approved` 缺 `review_base` → 回执不完整，停止并呈报。
+- 锚点或历史回执被改写 → **审计污染**（比契约过期更严重：它是绕过，不是意外），停止一切执行并呈报。
+- 没有 state.yaml → 回落旧逻辑（工件 + progress.md 台账末行），**不强制迁移存量变更**；该变更下次被命令触碰时补建并写首条回执。
+
+**范围比对必须排除流程产物**：`state.yaml`、`progress.md`、四工件、契约都在变更目录内，会出现在 `git diff` 里但不是业务改动。比对命令必须排除变更目录本身：
+
+```bash
+git diff --name-only <review_base>..HEAD -- . ':(exclude)openspec/changes/<change-name>'
+```
+
+**职责分离**：state.yaml 存"发生了什么"（机器可读事实），progress.md 存"怎么发生的"（命令、真实输出、证据、叙述）。**禁止**在 progress.md 再抄一份指纹表或状态枚举——双写必然漂移。范围判定只认 `git diff`。
 
