@@ -25,7 +25,7 @@ description: sflow 工作流的审查阶段命令。当用户说 "/sflow-review"
 
 ## 审查范围
 
-- 改动基线：progress.md 各批次的改动文件清单（或 git diff）
+- 改动基线：progress.md 的 `review_base` 行（DP-2 批准时写入的起点 commit）——执行 `git diff --name-only <review_base>..HEAD`（含未提交改动时用 `git diff --name-only <review_base>`）得到真实改动清单；**不得**以 progress.md 里 AI 自述的"改动文件清单"为基线
 - 审查维度：契约符合度（行为 vs 已批准行为）、需求覆盖（漏实现）、编码规范（项目 AGENTS.md / docs/*.md）、副作用（范围外文件、公共组件影响面、样式与枚举规范）
 
 ## 三级严重度归类
@@ -44,7 +44,7 @@ Critical/Important 需要修复时：回 `/sflow-apply`（在契约范围内改�
 
 ## 阶段报告（强制收尾）
 
-输出末尾必须附共享约定 core.md（sflow-start 母本）第 8 节的四行报告。
+输出末尾必须附共享约定 core.md（sflow-start 母本）第 8 节的四行报告。Critical 清零后"下一步"为 `/sflow-archive`；有阻塞 Critical 时"下一步"为 `/sflow-apply` 或 `/sflow-debug`（修复）。
 
 ## 反模式
 

@@ -15,6 +15,8 @@
 
 ## 验证链（/sflow-verify 逐条真实执行并贴出输出；验证阶段建议使用只读命令，不修改文件）
 
+> **生成本文件前必须逐条真实执行下列命令确认其在本项目确实存在且可运行**（见 /sflow-start 步骤 3）。禁止照抄模板默认值——命令名拼错或脚本不存在，会让 /sflow-verify 跑出假的"通过"。
+
 - pnpm lint:check
 - pnpm typecheck
 - pnpm test

@@ -50,7 +50,7 @@ description: sflow 工作流的验证收口命令。当用户说 "/sflow-verify"
 |------|--------|--------|
 | Completeness 完整性 | 需求无遗漏 | specs 每条 Requirement 都能对应到已完成的任务与验证义务 |
 | Correctness 正确性 | 行为符合契约 | 契约"关键场景/验收检查"逐条比对实现行为 |
-| Coherence 一致性 | 改动无越界 | progress.md 改动文件清单与契约批次一致，无范围外文件被改 |
+| Coherence 一致性 | 改动无越界 | 以 progress.md 的 `review_base` 为基线执行 `git diff --name-only <review_base>..HEAD`（含工作区未提交改动时用 `git diff --name-only <review_base>`），把输出与契约"任务批次"的文件清单逐项比对；**不得**用 progress.md 里 AI 自己写的"改动文件清单"当证据——那是被审查对象的自述，不是独立证据 |
 
 任何一维不通过：在 progress.md 记录结论与差异说明，触发 DP 交用户决定（回 `/sflow-apply` 修复或放弃变更）。**不得**带着不通过判定进入归档。
 
@@ -60,7 +60,7 @@ hotfix/tweak 不走本命令的完整三维判定，但**验证链仍必须真�
 
 ## 阶段报告（强制收尾）
 
-输出末尾必须附共享约定 core.md（sflow-start 母本）第 8 节的四行报告。全部通过时"下一步"为 `/sflow-archive`。
+输出末尾必须附共享约定 core.md（sflow-start 母本）第 8 节的四行报告。全部通过时"下一步"为 `/sflow-review`（审查是归档的前置门禁，**不得跳过审查直接归档**）。
 
 ## 反模式
 

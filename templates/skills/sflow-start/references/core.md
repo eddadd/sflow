@@ -1,9 +1,9 @@
 # sflow 全局共享约定（所有 /sflow-* 命令执行前加载）
 
-## 1. 状态机（7 状态 + 2 快速路径）
+## 1. 状态机（8 状态 + 2 快速路径）
 
 ```
-exploring ──> specifying ──> bridging ──> building ──> verifying ──> archiving ──> done
+exploring ──> specifying ──> bridging ──> building ──> verifying ──> reviewing ──> archiving ──> done
                 ^              ^             │    │
                 │              │             │    └──> debugging（返回 building）
                 │              └─────────────┘（契约漂移 → 重新桥接）
@@ -20,7 +20,16 @@ exploring ──> specifying ──> bridging ──> building ──> verifying
 - ❌ 不算：`vite.config.ts` 等构建配置、`package.json`（依赖变更影响面大）、`src/**` 下任何逻辑代码
 - 判不准 → 按 full 处理，宁可流程重一点，不要边界裸奔
 
-状态一律从工件内容推断，不从聊天记忆或文件时间戳推断。
+状态**阶段**（exploring / specifying / bridging / building / verifying / reviewing / archiving / done）从工件内容推断，不从聊天记忆或文件时间戳推断。
+
+**阶段与阶段内位置分开判**（P0）：工件只能证明"大阶段"，证明不了"阶段内走到哪一步"——`verifying` 通过后与 `reviewing` 通过后的工件完全一样，`building` 中与 `debugging` 中的工件也完全一样。因此：
+
+| 判定对象 | 来源 |
+|---------|------|
+| 大阶段（上面的 8 个） | 工件内容（四工件是否齐全、契约是否存在、tasks 是否勾完） |
+| 阶段内位置（验证是否通过、审查是否通过、调试是否进行中） | progress.md 台账**末行**的性质：末条是"验证记录全绿"→ 待审查；末条是"review：…"→ 待归档；末条是"Attempt n"→ 调试中 |
+
+禁止只用工件推断阶段内位置：`verifying` 工件齐全 ≠ 验证已通过 ≠ 审查已通过，三者必须由台账末行区分。
 
 **building 串行化**：同一时间至多允许一个变更处于 `building`（执行中）；其余活动变更只能停在 `specifying` / `bridging` 并行规划。理由：执行是唯一有写权限的阶段，串行化保证"改动文件清单 vs 契约"的比对不被其他变更干扰。
 
@@ -45,9 +54,23 @@ exploring ──> specifying ──> bridging ──> building ──> verifying
 
 反模式一句话：契约变了，工件就必须跟着变（If the contract changed, the artifacts changed）。
 
-**工件指纹（机械扳机）**：DP-2 批准时，用 `git hash-object <file>` 对四份规划工件各生成一个指纹，记入 progress.md 的"工件指纹"表；`/sflow-apply` 每个批次开始前（含会话中断恢复时）重算比对，任一指纹不一致 → 机械判定契约过期，立即停止执行并回 `/sflow-contract`，不得"先做完这批再说"。AI 只负责执行命令与比对字符串，判定是确定性的。
+**工件指纹（机械扳机）**：DP-2 批准时生成三个指纹，全部记入 progress.md 的"工件指纹"表：
 
-## 4. 工件目录布局（兼容 OpenSpec）
+| 指纹 | 计算对象 | 命令 |
+|------|---------|------|
+| `artifacts_hash` | proposal.md、specs 下全部 spec.md、design.md | `git hash-object <file>` 逐个 |
+| `tasks_hash` | tasks.md，**先剥离复选框再哈希** | `node -e "process.stdout.write(require('fs').readFileSync('tasks.md','utf8').replace(/- \[[ xX]\]/g,'- [ ]'))" \| git hash-object --stdin` |
+| `contract_hash` | execution-contract.md | `git hash-object execution-contract.md` |
+
+`tasks_hash` 必须归一化：勾选任务是**执行进度**，不是规划范围（Task completion is execution progress, not planning scope）。直接对 tasks.md 原文做 `git hash-object` 会让"批次完成时勾掉任务"这个规定动作本身改掉指纹，导致第 2 批次起必然误判契约过期。归一化只忽略勾选状态，**任务组重排、任务增删、文字改动仍然改变哈希**（已实测：勾选后哈希不变，重排后哈希改变）。
+
+归一化的命令必须**逐字照用上表**，不得每次会话自行发挥——同一份文件用不同归一化逻辑会算出不同指纹，反而引入新的不确定比对。
+
+`/sflow-apply` 每个批次开始前（含会话中断恢复时）重算三个指纹比对，任一不一致 → 机械判定契约过期，立即停止执行并回 `/sflow-contract`，不得"先做完这批再说"。AI 只负责执行命令与比对字符串，判定是确定性的。
+
+**审查基线（review_base）**：DP-2 批准时同时执行 `git rev-parse HEAD`，把结果记入 progress.md"工件指纹"表的 `review_base` 行。这是审查与范围比对的起点，**只写一次**，后续任何命令不得改写它。`/sflow-verify` 做一致性判定、`/sflow-review` 确定审查范围时都以它为基线。
+
+## 4. 工件目录布局（结构兼容 OpenSpec）
 
 ```
 openspec/changes/<change-name>/
@@ -65,7 +88,9 @@ openspec/changes/quick-<name>/     # 快速路径台账（tweak/hotfix 专用，
 
 归档后并入 `openspec/changes/archive/<date>-<change-name>/`，delta spec 同步合并回主规格 `openspec/specs/`，防规格腐烂。
 
-**与 OpenSpec CLI 共存**：变更目录结构、`.openspec.yaml` 元数据、archive 命名 `archive/<date>-<change-name>/` 均保持与 OpenSpec CLI 兼容；`.openspec.yaml` 随目录创建、随归档移动，任何阶段不得删除，确保 OpenSpec CLI 仍能识别变更与归档记录。
+**与 OpenSpec CLI 共存（仅结构层面）**：变更目录结构、`.openspec.yaml` 元数据、archive 命名 `archive/<date>-<change-name>/` 均保持与 OpenSpec CLI 兼容；`.openspec.yaml` 随目录创建、随归档移动，任何阶段不得删除，确保 OpenSpec CLI 仍能识别变更与归档记录。
+
+**"结构兼容"不等于"格式兼容"**：sflow 的工件正文使用中文结构头（`## 新增需求` / `### 需求:<名称>` / `#### 场景:<名称>`），与 OpenSpec CLI 解析器要求的英文结构头（`## Requirements` / `### Requirement:` / `#### Scenario:`）**不通用**。sflow 不调用 `openspec validate`，机械校验由 sflow 自己的工件自检承担。**归档合并唯一的硬约束是 delta 标题与主 spec 标题逐字一致**——因此当项目主规格已存在某种结构头时，delta 必须跟随主规格的既有格式，而不是跟随本文件的主张。详见第 10 节。
 
 ## 5. 工件语言
 
@@ -120,3 +145,25 @@ openspec/changes/quick-<name>/     # 快速路径台账（tweak/hotfix 专用，
 | 审查工具 | /sflow-review | 结构化代码审查（如 code-cr） | 内置默认审查：按审查范围四维度 + Critical/Important/Minor 三级归类 AI 自查，结论格式与外挂工具一致 |
 
 规则：值为技能名；技能不可用时明确告知用户，不得静默跳过；快速路径（tweak/hotfix）不经过规划与审查，也不执行深度验证，但验证链不豁免。
+
+## 10. spec 结构头格式（跟随主规格，不跟随主张）
+
+spec 的结构头（需求章节标题、需求标题、场景标题）**必须与目标 capability 主规格的既有格式逐字一致**，因为归档合并按标题精确匹配，格式漂移会导致合并失败或产生重复需求。
+
+判定顺序：
+
+1. 目标主规格 `openspec/specs/<capability>/spec.md` **已存在** → 以其既有结构头为准（下文格式表仅作参考，不覆盖现实）；
+2. 主规格不存在（本次新建 capability）→ 使用下表的**中文标准格式**；
+3. 主规格格式混乱（同一文件内多种结构头混用）→ 先在 DP-1 阶段向用户指出并确认统一口径，不得自行猜测跟随哪一个。
+
+中文标准格式（sflow 默认）：
+
+| 层级 | 格式 | 示例 |
+|------|------|------|
+| 需求章节头 | `## <变更类型>需求` | `## 新增需求` / `## 修改需求` / `## 移除需求` |
+| 需求标题 | `### 需求:<名称>` | `### 需求:余额流水列表筛选` |
+| 场景标题 | `#### 场景:<名称>` | `#### 场景:用户填写筛选条件后查询` |
+| 场景要点 | `- **当** …` / `- **那么** …` / `- **并且** …` | — |
+
+**禁止**在同一变更内混用中英结构头，**禁止**把 `### Requirement:` / `#### Scenario:` 写进以中文结构头为主规格的项目——那会被归档合并遗漏。历史归档目录（`changes/archive/`）中已存在的英文结构头是历史痕迹，**不要为"统一格式"去改写已归档文件**：归档是审计证据，只进不出。
+

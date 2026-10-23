@@ -30,7 +30,7 @@ description: sflow 工作流的桥接阶段命令。当用户说 "/sflow-contrac
 
 ## 需求覆盖交叉检查（生成时必做）
 
-1. 逐条列出 specs/ 中所有 SHALL/MUST。
+1. 逐条列出 specs/ 中所有规范条款（中文「必须」/「不得」，或英文项目的 SHALL/MUST）。
 2. 核对每条：已出现在"已批准行为"、映射到至少一个任务批次、有对应验证义务。
 3. 未映射的 Requirement **显式列入契约的"未覆盖项"**，并提示回 `/sflow-propose` 补齐——不得静默丢弃。
 
@@ -39,7 +39,13 @@ description: sflow 工作流的桥接阶段命令。当用户说 "/sflow-contrac
 向用户展示：契约全文 + 需求覆盖映射表 + 识别到的歧义点。请求**明确批准**。
 
 - 未批准：记录修改意见，迭代契约后重新展示。
-- 批准：在 progress.md 记录 `DP-2 批准：<时间> <结论摘要>`；随后用 `git hash-object` 对 proposal.md、specs/ 下全部 spec.md、design.md、tasks.md 生成指纹，记入 progress.md 的"工件指纹"表，状态改为 building。
+- 批准：在 progress.md 记录 `DP-2 批准：<时间> <结论摘要>`；随后按 core.md 第 3 节生成**三个**指纹记入 progress.md 的"工件指纹"表：
+
+  1. `artifacts_hash`：对 `proposal.md`、`specs/` 下全部 `spec.md`、`design.md` 逐个执行 `git hash-object <file>`；
+  2. `tasks_hash`：对 `tasks.md` **先剥离复选框再哈希**（逐字照用 core.md 第 3 节的命令，不得自行改写归一化逻辑）——勾选任务是执行进度不是规划范围，直接哈希原文会让批次勾选动作本身误判契约过期；
+  3. `contract_hash`：对 `execution-contract.md` 执行 `git hash-object execution-contract.md`。
+
+  再执行 `git rev-parse HEAD` 把结果记入"工件指纹"表的 `review_base` 行（审查与范围比对基线，**只写一次**，后续命令不得改写）。最后把状态改为 building。
 
 **硬规则**：
 - 不得替用户批准契约。
@@ -50,11 +56,14 @@ description: sflow 工作流的桥接阶段命令。当用户说 "/sflow-contrac
 
 出现下列任一情况，契约视为过期，须重新生成本命令的流程（重走 DP-2）：
 
-- proposal 范围变化
-- specs 增删改 Requirement
-- design 关键决策变化
-- tasks 任务组重排
+- proposal 范围变化（`artifacts_hash` 变）
+- specs 增删改 Requirement（`artifacts_hash` 变）
+- design 关键决策变化（`artifacts_hash` 变）
+- tasks 任务组重排、任务增删或文字改动（`tasks_hash` 变；**仅勾选状态变化不算**）
+- 契约自身条款被改动（`contract_hash` 变）
 - 契约意图锁与 proposal 范围不再匹配
+
+判定方式：重算三个指纹与 progress.md"工件指纹"表比对，任一不一致即过期——机械判定，不靠人眼。
 
 ## 阶段报告（强制收尾）
 
