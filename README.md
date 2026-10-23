@@ -53,6 +53,7 @@ AI 辅助编程的失控，归根结底是两类：**方向失控**（需求没�
 
 - **仅 4 个人工决策点（DP-1~4）**：需求确认、契约批准、调试升级、归档确认。人只管关键拍板，其余全部自动化；
 - **范围栅栏**：只允许修改契约中列出的文件，范围外改动强制回退重新规划，禁止"顺手改"；
+- **提交纪律（可选）**：`git_discipline: on` 时每批次走 TDD 红-绿（先失败测试 → 最小实现 → 转绿 → commit）并要求工作区干净；默认 `off`，不改变你的提交习惯——**开关不豁免验证**；
 - **真实验证纪律**：验证链逐条真实执行并贴出输出，配合深度验证（可挂载 glodrapay-front-test 等测试技能）与三维判定（完整性/正确性/一致性），一致性以 `git diff --name-only <review_base>` 的真实改动比对契约，不用 AI 自述清单；
 - **审查是必经门禁**：验证通过后路由到 `/sflow-review`（不是直接归档），审查结论无阻塞 Critical 才允许归档；
 - **状态回执（state.yaml）**：与 progress.md 同级、append-only——**锚点**（`review_base` + 三组工件指纹，只写一次）与**回执**（`dp1.approved` / `dp2.approved` / `batch.N.done` / `verify.passed` / `review.passed` / `debug.attempt.N` / `archive.done`）分列，状态判定与"改没改过基线"都由它机械读出，归档时随目录整体移动；
@@ -97,7 +98,7 @@ npx @eddadd/sflow init --config         # 顺带在当前项目生成 workflow.c
 
 **第 2 步：配置项目（每个项目一次）**
 
-编辑项目根目录的 `workflow.config.md`，声明三件事：**验证链**（lint / typecheck / test 等命令）、**测试与审查工具**（如 glodrapay-front-test、code-cr，可留空走内置默认）、**快速路径边界**（tweak / hotfix 的文件数阈值）。
+编辑项目根目录的 `workflow.config.md`，声明四件事：**验证链**（lint / typecheck / test 等命令）、**测试与审查工具**（如 glodrapay-front-test、code-cr，可留空走内置默认）、**快速路径边界**（tweak / hotfix 的文件数阈值）、**提交纪律开关**（`git_discipline`，默认 `off`；设为 `on` 后每批次走 TDD 红-绿并要求工作区干净 + 每批 commit）。
 
 **第 3 步：日常使用（在 AI 客户端里对话即可）**
 
@@ -127,7 +128,7 @@ npx @eddadd/sflow init --config         # 顺带在当前项目生成 workflow.c
 /sflow-start     入口与状态检测（含恢复中断会话）
 /sflow-propose   规划阶段：澄清需求 → 四份工件（DP-1 确认）
 /sflow-contract  桥接阶段：生成执行契约（DP-2 批准，唯一硬门禁）
-/sflow-apply     执行阶段：按契约批次实现，范围栅栏 + 工件指纹核对 + 锚点完整性核对
+/sflow-apply     执行阶段：按契约批次实现，范围栅栏 + 工件指纹核对 + 锚点完整性核对（可选 TDD/commit 纪律）
 /sflow-debug     调试阶段：四阶段根因分析，3 次失败升级 DP-3
 /sflow-verify    验证阶段：真实验证链 + 三维判定
 /sflow-review    审查阶段：可插拔接 code-cr 等审查工具

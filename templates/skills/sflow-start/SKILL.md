@@ -12,7 +12,7 @@ sflow 工作流入口：大阶段由工件内容（而非时间戳）推断，�
 1. 读取项目根目录 `workflow.config.md`。
 2. 文件不存在时：读取本技能 `assets/workflow.config-template.md`，就验证链、测试工具、审查工具、快速路径边界各项逐一向用户确认后，生成该文件再继续。不得跳过配置猜测验证命令。
 3. **验证链真实性预检（P0，生成 config 前必做）**：验证链里的每条命令必须**逐条真实执行一遍**（如 `pnpm <script> --version`、或直接运行只读命令）确认其在**本项目**中确实存在且可运行；命令不存在、脚本名拼错或只在模板默认值里成立时，必须先向用户报告并改为项目真实命令。禁止把模板默认值（如 `pnpm lint:check` / `pnpm test`）直接当作项目验证链——未经验证的验证链会让 `/sflow-verify` 跑出假的"通过"。执行记录（命令 + 结果）贴给用户确认后才生成 config。
-4. 记录配置中的：`verification`（验证链）、`review_tool`、`fast_path`（tweak/hotfix 边界）、`changes_dir`（变更工件目录，默认 `openspec/changes/`）。
+4. 记录配置中的：`verification`（验证链）、`review_tool`、`fast_path`（tweak/hotfix 边界）、`git_discipline`（提交纪律开关，默认 off）、`changes_dir`（变更工件目录，默认 `openspec/changes/`）。
 
 ## 第二步：状态检测（回执优先，工件兜底）
 

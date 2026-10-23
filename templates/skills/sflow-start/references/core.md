@@ -203,7 +203,7 @@ counters:
 |------|---------|
 | /sflow-propose | 创建 state.yaml；DP-1 批准 → `dp1.approved` |
 | /sflow-contract | DP-2 批准 → `dp2.approved`（含三组指纹；首次含 `review_base`） |
-| /sflow-apply | 每批次完成 → `batch.N.done`（含改动文件、验证义务结果摘要） |
+| /sflow-apply | 每批次完成 → `batch.N.done`（含改动文件、验证义务结果摘要；`git_discipline: on` 时含 `commit` sha） |
 | /sflow-debug | 每次尝试 → `debug.attempt.N`（含假设、结果）；解决 → `debug.resolved` |
 | /sflow-verify | `verify.passed` 或 `verify.failed` |
 | /sflow-review | `review.passed` 或 `review.blocked`（含 Critical/Important/Minor 计数） |
@@ -244,3 +244,28 @@ git diff --name-only <review_base>..HEAD -- . ':(exclude)openspec/changes/<chang
 
 **职责分离**：state.yaml 存"发生了什么"（机器可读事实），progress.md 存"怎么发生的"（命令、真实输出、证据、叙述）。**禁止**在 progress.md 再抄一份指纹表或状态枚举——双写必然漂移。范围判定只认 `git diff`。
 
+## 12. 提交纪律（可选开关，默认 off）
+
+由 workflow.config.md 的 `git_discipline` 控制，默认 `off`。
+
+**为什么默认 off**：TDD 红-绿与每批次 commit 会改变使用者的 git 习惯与提交粒度。强制开启会让"流程保护"变成"流程摩擦"，尤其在存量项目、脏工作区或已有既定提交规范时。因此设计成**显式开启**的能力，而不是默认强加的纪律。
+
+**开关不改变底线**：无论 `off` 还是 `on`，以下三项永远强制——
+
+1. 验证义务必须真实执行并贴输出（第 7 节）；
+2. 每批次完成必须写 `batch.N.done` 回执（第 11 节）；
+3. 契约指纹与锚点核对（第 3 节）在每批次开始前照做。
+
+`git_discipline: off` 只是**不强制**"先写测试"与"每批 commit"，不是允许跳过验证或回执。
+
+**`git_discipline: on` 时的三条硬约束**：
+
+| 约束 | 时点 | 命令 / 判据 |
+|------|------|------------|
+| 干净树前置 | 每批次开始前 | `git status --porcelain` 无输出；有未提交改动 → 拒绝进入批次，先让用户处理（提交或暂存），不得"带着上次的残留继续" |
+| TDD 红-绿 | 每批次内 | 先写会**失败**的测试并贴出失败输出（红）→ 最小实现 → 测试转绿并贴出通过输出（绿）。测试无法先行时（纯配置/文档/无测试框架）如实记录豁免理由，不得假装红过 |
+| 每批次 commit | 每批次收尾 | 验证义务通过后 `git commit`，提交信息含批次号与覆盖的 Requirement；提交后再写 `batch.N.done` 回执（回执可记录 commit sha 作为证据） |
+
+**与 review_base 的顺序**：批次 commit 会推进 HEAD，但 `baseline.review_base` 是 DP-2 批准时的起点 sha，**不随之改变**（第 3 节）。验证与审查始终以 `review_base..HEAD` 为真实改动范围——每批 commit 恰好让这段 diff 更清晰，而不是让基线漂移。
+
+**TDD 红-绿的证据形态**（贴进 progress.md，回执只记摘要）：先贴失败用例名 + 失败输出片段，后贴同一用例通过输出。**禁止**只写"已按 TDD 完成"而无失败阶段的输出——那是自述，不是证据。
