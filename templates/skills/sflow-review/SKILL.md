@@ -25,7 +25,7 @@ description: sflow 工作流的审查阶段命令。当用户说 "/sflow-review"
 
 ## 审查范围
 
-- 改动基线：state.yaml 的 `baseline.review_base`（首次 DP-2 批准时写入的起点 commit；无 state.yaml 的存量变更用 progress.md 同名记录）——执行 `git diff --name-only <review_base>..HEAD -- . ':(exclude)openspec/changes/<change-name>'`（含未提交改动时去掉 `..HEAD`），**排除变更工件目录本身**后得到真实业务改动清单；**不得**以 progress.md 里 AI 自述的"改动文件清单"为基线
+- 改动基线：state.yaml 的 `baseline.review_base`（首次 DP-2 批准时写入的起点 commit；无 state.yaml 的存量变更用 progress.md 同名记录）——执行 `git diff --name-only <review_base>..HEAD -- . ':(exclude)<changes_dir>/<change-name>'`（`changes_dir` 读自 workflow.config.md，默认 `openspec/changes/`；含未提交改动时去掉 `..HEAD`），**排除变更工件目录本身**后得到真实业务改动清单；**不得**以 progress.md 里 AI 自述的"改动文件清单"为基线
 - 审查维度：契约符合度（行为 vs 已批准行为）、需求覆盖（漏实现）、编码规范（项目 AGENTS.md / docs/*.md）、副作用（范围外文件、公共组件影响面、样式与枚举规范）
 
 ## 三级严重度归类

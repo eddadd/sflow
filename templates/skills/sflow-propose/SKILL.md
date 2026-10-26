@@ -1,6 +1,6 @@
 ---
 name: sflow-propose
-description: sflow 工作流的规划阶段命令。当用户说 "/sflow-propose"，或确认要为某个新需求走完整 sflow 流程、需要澄清需求并产出 proposal/specs/design/tasks 四份规划工件时使用。一次一问澄清需求，产出中文工件并自检，末尾触发 DP-1 人工确认。agent_created: true
+description: sflow 工作流的规划阶段命令。当用户说 "/sflow-propose"，或确认要为某个新需求走完整 sflow 流程、需要澄清需求并产出规划工件（proposal / specs / tasks，design 按需）时使用。一次一问澄清需求，产出中文工件并自检，末尾触发 DP-1 人工确认（简单需求可条件化跳过）。agent_created: true
 ---
 
 # sflow-propose
@@ -13,7 +13,7 @@ description: sflow 工作流的规划阶段命令。当用户说 "/sflow-propose
 2. 读取项目 `workflow.config.md`；缺失则先走 `/sflow-start` 的配置流程。
 3. 状态检测：已存在活动变更且未收口时，询问用户是继续该变更还是另起变更；不得默认覆盖旧变更。
 4. 判断路径：符合 tweak/hotfix 边界的，提示用户可直接走快速路径，用户坚持走 full 才继续。
-5. 加载本技能 `references/spec-methodology.md`（内置增强方法论，随技能分发，无外部依赖、不经 config 配置）。
+5. 加载本技能 `references/spec-methodology.md`（内置增强方法论，随技能分发，无外部依赖、不经 config 配置）；执行预检时再按需加载 `references/spec-checklist.md`（逐条清单），避免一次性读入全部细节。
 
 ## 需求探索纪律
 
@@ -33,18 +33,41 @@ description: sflow 工作流的规划阶段命令。当用户说 "/sflow-propose
 5. 结构头兼容预检：涉及既有主 spec 时，**先读主规格的现实格式**（章节头 / 需求标题 / 场景标题前缀），delta 结构头逐字跟随主规格（core.md 第 4、10 节 + 方法论第五节）；主规格不存在时用中文标准格式 `## 新增需求` / `### 需求:<名称>` / `#### 场景:<名称>`。此条任何情况都强制执行。
 6. **粒度判断**：单文件、无交叉约束的简单需求，按方法论豁免规则可跳过预检，但在 DP-1 展示时注明"简单需求，未执行增强预检"；判不准按执行预检处理。
 
-## 产出四份工件
+## 产出工件（proposal / specs / tasks 三件为主，design.md 按需）
 
 写入 `<changes_dir>/<change-name>/`，全部使用 `assets/` 中的模板，内容为简体中文：
 
 1. `proposal.md` — Why（≥50 字，讲清问题与动机）/ What Changes / Scope（含 Out of Scope 范围栅栏）
 2. `specs/<capability>/spec.md` — delta 格式（ADDED / MODIFIED / REMOVED Requirements）；每条 Requirement 含规范措辞（中文「必须」/「不得」，英文项目为 SHALL/MUST），且至少一个 `#### 场景:` 块
-3. `design.md` — 技术选型、接口/依赖/数据约束、关键决策及理由
-4. `tasks.md` — 有序任务清单，任务粒度可独立验证
-5. `.openspec.yaml` — 内容为 `schema: spec-driven` 与 `created: <日期>`（与 OpenSpec CLI 共存的元数据，见 core.md 第 4 节）
-6. `state.yaml` — 按 `assets/state.yaml` 模板创建（`change` 填目录名，`receipts: []`），这是状态回执的起点（core.md 第 11 节）
+3. `tasks.md` — 有序任务清单，任务粒度可独立验证
+4. `.openspec.yaml` — 内容为 `schema: spec-driven` 与 `created: <日期>`（与 OpenSpec CLI 共存的元数据，见 core.md 第 4 节）
+5. `state.yaml` — 按 `assets/state.yaml` 模板创建（`change` 填目录名，`receipts:` 为空块），这是状态回执的起点（core.md 第 11 节）。创建后立即追加 `path.selected` 回执（值 = `full`），因为此时代理已确定路径
+6. `design.md` — **按需生成**（见下）
+
+### design.md 按需规则（P0：不凑数，也不遗漏）
+
+**只有存在真实技术决策时才生成 `design.md`**；没有决策时不生成，改在 proposal 记一行「无独立技术决策」并说明理由。
+
+**必须生成 `design.md` 的情形**（任一命中）：
+
+- 新增或修改接口 / 数据结构 / 类型定义；
+- 引入或替换依赖、组件库能力扩展；
+- 存在「二选一」技术选型（含 on/off 取舍）需要记录理由；
+- 涉及跨模块数据流、状态时序、缓存策略。
+
+**可以不生成的情形**：纯 UI 文案/样式调整、纯配置项增删、逻辑改动局限在单文件且无接口形态变化——此时在 proposal 追加一节：
+
+```markdown
+## 技术决策
+
+无独立技术决策：<一句话说明为什么不涉及接口/依赖/选型>。
+```
+
+**判不准 → 生成 `design.md`**（宁可多写一节，不要让设计约束在实现时才浮出来）。
 
 change-name 用英文短横线命名（如 `add-order-export`），目录内工件用中文。`state.yaml` 只追加回执，**禁止**在其中写状态枚举或叙述性内容。
+
+**`path.selected` 回执**：`/sflow-propose` 在创建变更目录并写完 state.yaml 后，**必须**追加 `path.selected` 回执（值 = `full`），因为此时代理已确定路径是 full。快速路径的 `path.selected` 由 `/sflow-start` 写入（快速路径不经 propose）。
 
 ## 工件自检（写完必过）
 
@@ -54,6 +77,8 @@ change-name 用英文短横线命名（如 `add-order-export`），目录内工�
 - [ ] tasks 与 specs 的每条 Requirement 可对应（映射关系在 DP-1 时展示）
 - [ ] 无占位符残留（TODO、xxx、待定）
 - [ ] `state.yaml` 已创建，`change` 与目录名一致，`receipts` 为合法 YAML 列表
+- [ ] `path.selected` 回执已写入（值 = `full`）
+- [ ] design.md 按需规则已判定：命中必生成情形则已生成；未命中则在 proposal 写了「技术决策」节说明
 - [ ] 结构头兼容：涉及既有主 spec 时，delta 的章节头/需求标题/场景标题与主 spec 现实格式**逐字一致**（归档合并按标题精确匹配，格式漂移会导致匹配失败）；主规格不存在时用中文标准格式；同一变更内无中英结构头混用
 - [ ] 增强预检检查清单全部通过（简单需求按豁免规则跳过的除外，需在 DP-1 注明）
 
@@ -64,6 +89,8 @@ change-name 用英文短横线命名（如 `add-order-export`），目录内工�
 **轻量化开关**：workflow.config.md 配置 `dp1_lightweight: true` 且需求不属强制 full 情形（见 config 强制 full 清单）时，可将需求确认与工件展示合并为一次确认；强制 full 情形不受开关影响，仍分步确认。
 
 **硬规则**：DP-1 未批准，不得建议用户执行 `/sflow-contract`，更不得写任何业务代码。DP-1 批准后，**在 state.yaml 追加 `dp1.approved` 回执**（这是批准发生的唯一机械证据），progress.md 只写一句批准时间与结论作为叙述。
+
+**DP-1 条件化（core.md 第 2 节）**：需求简单到无需澄清时（一句话能说清，且不命中多模块动点 / 隐性约束 / 跨模块接口契约 / 状态时序敏感任一），可跳过 DP-1 直接进入 `/sflow-contract`。跳过时必须**在 state.yaml 追加 `dp1.skipped` 回执并写明判定理由**，progress.md 记一句——跳过是显式记录的行为，不是静默省略。判不准 → 走 DP-1。**DP-2 不受影响，仍是硬门禁。**
 
 ## 阶段报告（强制收尾）
 

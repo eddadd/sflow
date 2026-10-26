@@ -10,7 +10,7 @@ description: sflow 工作流的验证收口命令。当用户说 "/sflow-verify"
 ## 前置检查
 
 1. 加载共享约定 core.md（单一母本：`sflow-start/references/core.md`，本目录不再保留副本）与项目 `workflow.config.md`。
-2. 状态检测：tasks.md 全部勾选，且 state.yaml 回执流末条为 `batch.N.done`（无 state.yaml 的存量变更以 progress.md"执行完成"为准）；若末条已是 `verify.passed`/`verify.failed`，说明验证已发生过 → 默认不重复验证，如实告知用户并请其确认是否重跑。未执行完成 → 拒绝验证，输出阶段报告指回 `/sflow-apply`。
+2. 状态检测：tasks.md 全部勾选，且 state.yaml 回执流末条为 `batch.N.done` 或 `debug.resolved`（验证→调试→重验的循环修复完成）（无 state.yaml 的存量变更以 progress.md"执行完成"为准）；若末条已是 `verify.passed`/`verify.failed`，说明验证已发生过 → 默认不重复验证，如实告知用户并请其确认是否重跑。未执行完成 → 拒绝验证，输出阶段报告指回 `/sflow-apply`。
 
 ## 验证链执行（核心动作）
 
@@ -51,7 +51,7 @@ description: sflow 工作流的验证收口命令。当用户说 "/sflow-verify"
 |------|--------|--------|
 | Completeness 完整性 | 需求无遗漏 | specs 每条 Requirement 都能对应到已完成的任务与验证义务 |
 | Correctness 正确性 | 行为符合契约 | 契约"关键场景/验收检查"逐条比对实现行为 |
-| Coherence 一致性 | 改动无越界 | 以 `baseline.review_base` 为基线执行 `git diff --name-only <review_base>..HEAD -- . ':(exclude)openspec/changes/<change-name>'`（含工作区未提交改动时去掉 `..HEAD`），**必须排除变更工件目录本身**（工件、progress.md、state.yaml 是流程产物，不是业务改动）；把输出与契约"任务批次"的文件清单逐项比对。**不得**用 progress.md 里 AI 自己写的"改动文件清单"当证据——那是被审查对象的自述，不是独立证据 |
+| Coherence 一致性 | 改动无越界 | 以 `baseline.review_base` 为基线执行 `git diff --name-only <review_base>..HEAD -- . ':(exclude)<changes_dir>/<change-name>'`（`changes_dir` 读自 workflow.config.md，默认 `openspec/changes/`；含工作区未提交改动时去掉 `..HEAD`），**必须排除变更工件目录本身**（工件、progress.md、state.yaml 是流程产物，不是业务改动）；把输出与契约"任务批次"的文件清单逐项比对。**不得**用 progress.md 里 AI 自己写的"改动文件清单"当证据——那是被审查对象的自述，不是独立证据 |
 
 任何一维不通过：在 progress.md 记录结论与差异说明，触发 DP 交用户决定（回 `/sflow-apply` 修复或放弃变更）。**不得**带着不通过判定进入归档。
 

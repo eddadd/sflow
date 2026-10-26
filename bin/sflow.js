@@ -10,8 +10,9 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const stateCli = require('./sflow-state');
 
-const VERSION = '0.1.4';
+const VERSION = '0.2.0';
 const PKG_NAME = '@eddadd/sflow';
 const SKILL_PREFIX = 'sflow-';
 
@@ -78,8 +79,18 @@ sflow CLI（${PKG_NAME}）v${VERSION} — 规格驱动 AI 工作流安装器
 用法：
   sflow init    [--target <name>] [--dir <path>] [--config]   安装/覆盖 8 条技能
   sflow update  [--target <name>] [--dir <path>]              同 init（语义化别名）
-  sflow list                                                 查看各目标安装状态
-  sflow remove  [--target <name>] [--dir <path>]             卸载已安装的 sflow-* 技能
+  sflow list                                                  查看各目标安装状态
+  sflow remove  [--target <name>] [--dir <path>]              卸载已安装的 sflow-* 技能
+
+机械校验（B3，在项目根执行；只读，不修改任何文件）：
+  sflow state    [<change>] [--json] [--cwd <path>]           推导当前阶段与下一步（读 state.yaml + 工件）
+  sflow validate [<change>] [--json] [--cwd <path>]           校验 state.yaml 与工件自洽（伪回执 / 锚点 / 结构头）
+  sflow guard    [<change>] [--json] [--cwd <path>]           机械判契约过期（指纹漂移）与审计污染（锚点改写）
+  sflow guard --emit-fingerprints [<change>]                   DP-2 用：输出可直接粘贴进 dp2.approved 的指纹行
+
+  <change> 省略时：活动变更唯一则自动选中，多个则要求指定
+  退出码：guard 0=fresh 1=过期 2=污染 3=不适用 5=无法判定；validate 0=通过 4=失败 5=无法判定
+
   sflow --help / -h                                           本帮助
   sflow --version / -v                                        版本号
 
@@ -95,11 +106,13 @@ sflow CLI（${PKG_NAME}）v${VERSION} — 规格驱动 AI 工作流安装器
 选项：
   --config     init 时把 workflow.config.template.md 复制为当前目录 workflow.config.md（已存在则跳过）
   --force      配合 --config 使用时覆盖已存在的 workflow.config.md
+  --json       state / validate / guard：以 JSON 输出（便于脚本消费）
+  --cwd <path> state / validate / guard：指定项目根目录（默认当前目录）
 `;
 
 /** @returns {Object} 解析后的命令与选项 */
 const parseArgs = (argv) => {
-  const opts = { target: undefined, dir: undefined, config: false, force: false };
+  const opts = { target: undefined, dir: undefined, config: false, force: false, json: false, cwd: undefined, _: [] };
   let cmd = '';
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -107,9 +120,15 @@ const parseArgs = (argv) => {
     else if (a === '--dir') opts.dir = argv[++i];
     else if (a === '--config') opts.config = true;
     else if (a === '--force') opts.force = true;
+    else if (a === '--json') opts.json = true;
+    else if (a === '--emit-fingerprints' || a === '--emit') opts.emit = true;
+    else if (a === '--cwd') opts.cwd = argv[++i];
     else if (a === '--help' || a === '-h') cmd = 'help';
     else if (a === '--version' || a === '-v') cmd = 'version';
-    else if (!a.startsWith('-')) cmd = a;
+    else if (!a.startsWith('-')) {
+      if (cmd === '') cmd = a;
+      else opts._.push(a);
+    }
   }
   return { cmd, opts };
 };
@@ -202,6 +221,20 @@ switch (cmd) {
   case 'list':
     runList();
     break;
+  case 'state':
+  case 'validate':
+  case 'guard': {
+    // 统一把"停机呈报"变成干净的一行结论，而不是抛栈——判定失败是正常结果，
+    // 不是程序崩溃；退出码承载机器可读的结论。
+    const run = { state: stateCli.runState, validate: stateCli.runValidate, guard: stateCli.runGuard }[cmd];
+    try {
+      process.exit(run(opts));
+    } catch (err) {
+      if (opts.json) console.log(JSON.stringify({ ok: false, error: err.message }, null, 2));
+      else console.log(`✗ ${cmd} 无法判定：${err.message}`);
+      process.exit(5);
+    }
+  }
   case 'help':
     console.log(helpText());
     break;

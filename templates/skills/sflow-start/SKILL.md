@@ -22,15 +22,16 @@ sflow 工作流入口：大阶段由工件内容（而非时间戳）推断，�
 
 - `schema` 为 `sflow-state/v1`、`change` 与目录名一致、`receipts` 是合法列表、首次 `dp2.approved` 含 `review_base`；
 - 任何一条不成立（含工件与回执矛盾，如 tasks 未勾完却有 `verify.passed`）→ **停止并呈报**，不猜测、不自动修正。
+- **优先用 CLI 机械执行**：`sflow validate [<change>]`（core.md 第 13 节）。退出码 0 = 通过，4 = 校验失败（逐条读它的 ✗ 输出），5 = 无法判定（读错误信息）。CLI 不可用时按上面的文字规则手工执行并说明。
 
 **2. 用工件定大阶段**（state.yaml 不存大阶段，它可推导）：
 
 | 目录内容 | 大阶段 | 下一步 |
 |---------|--------|--------|
 | 目录不存在，或全部变更已归档 | `exploring`（无活动变更） | 新需求 → `/sflow-propose` |
-| 目录名为 `quick-<name>` 且无四工件 | 快速路径（tweak/hotfix） | 继续执行，或 `/sflow-verify` 快速路径收口 |
+| 目录名为 `quick-<name>` 且无规划工件 | 快速路径（tweak/hotfix） | 继续执行，或 `/sflow-verify` 快速路径收口 |
 | 仅有 proposal.md，或工件不全 | `specifying` | 补齐工件 → `/sflow-propose`（续写） |
-| 四份工件齐全，无 execution-contract.md | `specifying` 完成，待桥接 | `/sflow-contract` |
+| 规划工件齐全（proposal + specs + tasks，design 按需），无 execution-contract.md | `specifying` 完成，待桥接 | `/sflow-contract` |
 | 有 execution-contract.md，无 `dp2.approved` 回执 | `bridging`（待批准） | 展示契约请求批准 |
 | 有 `dp2.approved`，tasks 未勾完 | `building` | `/sflow-apply` |
 | 任务全部完成 | 见下（阶段内位置） | 见下 |
@@ -40,7 +41,8 @@ sflow 工作流入口：大阶段由工件内容（而非时间戳）推断，�
 | 回执流末条 | 大阶段 → 阶段内位置 | 下一步 |
 |-----------|-------------------|--------|
 | `dp2.approved` / `batch.N.done`（tasks 未勾完） | `building` | `/sflow-apply` |
-| `debug.attempt.N`（其后无 `debug.resolved`） | `building` → debugging | 继续调试，或按 DP-3 呈报 |
+| `debug.attempt.N`（其后无 `debug.resolved`） | `debugging` | 继续调试，或按 DP-3 呈报 |
+| `debug.resolved` | `verifying`（调试已解决，待重验） | `/sflow-verify` |
 | `verify.failed` | debugging（验证失败） | `/sflow-debug` |
 | `verify.passed` | `reviewing`（待审查） | `/sflow-review` |
 | `review.blocked` | `building`（修复中） | `/sflow-apply` 或 `/sflow-debug` |
@@ -65,7 +67,7 @@ sflow 工作流入口：大阶段由工件内容（而非时间戳）推断，�
 硬规则：
 - 涉及新模块、schema/API 变更、跨模块改动 → 强制 `full`，不得走快速路径。
 - 快速路径执行中超出边界 → 立即停下，升级回 `full`，已完成工作写入 progress.md 备查。
-- 路径选择必须留痕：`full` 由 `/sflow-propose` 建 state.yaml 后写 `path.selected`；快速路径必须先在 `changes_dir` 下建 `quick-<name>/`，放入 `progress.md`（意图 + 改动清单 + 验证输出）与 `state.yaml`（`change: quick-<name>`），并写 `path.selected` 回执——保证会话中断后状态检测可恢复。仅查询状态、不做选择时不写回执。
+- 路径选择必须留痕：`full` 路径由 `/sflow-propose` 在创建 state.yaml 后写 `path.selected`（值 = `full`）；快速路径由 `/sflow-start` 在建 `quick-<name>/` 目录后写 `path.selected`；用户选择非推荐路径时，在 state.yaml 追加 `override`（含推荐项、实际选择、理由）。仅查询状态、不做选择时不写回执。
 
 ## 第四步：输出阶段报告
 

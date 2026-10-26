@@ -10,7 +10,7 @@
 
 | 版本 | 日期 | 类型 | 概览 |
 | ---- | ---- | ---- | ---- |
-| 0.1.4 | 2026-10-23 | 补丁（**未发布**） | 修复契约指纹自炸、审查路由断链、结构头主张自相矛盾、状态判定双盲；新增状态回执 state.yaml 与提交纪律开关 |
+| 0.2.0 | 2026-10-23 | 次版本（**未发布**） | 修复契约指纹自炸、审查路由断链、结构头主张自相矛盾、状态判定双盲；新增 state.yaml 状态回执、机械校验 CLI（state/validate/guard）、提交纪律开关、design 按需与 DP-1/DP-4 条件化 |
 | 0.1.3 | 2026-10-21 | 补丁 | 配置模板单一源同步；补齐内置模板的挂载点/check-only 验证链 |
 | 0.1.2 | 2026-10-10 | 补丁 | README 重写为完整工作流说明 |
 | 0.1.1 | 2026-09-28 | 次版本 | 可插拔增强体系 + 增强方法论内置；默认目标改名 agents |
@@ -18,16 +18,16 @@
 
 ---
 
-## 0.1.4 — 2026-10-23 · 补丁（未发布）
+## 0.2.0 — 2026-10-23 · 次版本（未发布）
 
 **主题：把"机械判定"从话术变成真的会生效的规则。**
 
-修复四个 P0 级问题——它们都属于同一类缺陷：机制写进了文档，但实际执行时不会生效或自相矛盾。
+修复四个 P0 级问题并新增多项能力——从"文档宣称"升级为"真正生效"的质变。
 
 ### 修复
 
 - **契约指纹自炸**：`tasks.md` 原本直接做 `git hash-object` 生成指纹，而 `/sflow-apply` 规定每批次完成时要在 `tasks.md` 勾选任务——勾选动作本身改变了哈希，导致第 2 批次起**必然**误判"契约过期"。现改为**先剥离复选框再哈希**（勾选属执行进度，不属规划范围），任务组重排/增删/改写仍会改变哈希。
-- **指纹集合不完整**：新增 `contract_hash`（`execution-contract.md`），三指纹改为 `artifacts_hash`（proposal / specs / design）+ `tasks_hash` + `contract_hash`。
+- **指纹集合不完整**：新增 `contract`（`execution-contract.md`），三组指纹定为 `artifacts`（proposal / specs / design）+ `tasks` + `contract`。
 - **审查基线缺失**：新增 `review_base`——DP-2 批准时记录 `git rev-parse HEAD`，只写一次，执行阶段不得改写，作为验证一致性与审查范围的共同基线。
 - **审查命令是死路由**：状态机原为 7 状态，`verifying` 直接跳 `archiving`，`/sflow-review` 没有任何路由会走到它，而 `/sflow-archive` 又要求"审查无阻塞 Critical"——形成死锁。现补 `reviewing` 与 `debugging`（8 状态），`/sflow-verify` 收口改为指向 `/sflow-review`，`/sflow-archive` 前置要求存在审查结论记录（**没有记录 = 审查未发生**，不得用"验证通过"代替"审查通过"）。
 - **状态判定双盲**：改为两层判定——**大阶段看工件内容，阶段内位置看 progress.md 台账末行**（`verifying` 通过后与 `reviewing` 通过后的工件完全相同，只用工件无法区分）。
@@ -38,6 +38,11 @@
 
 - **提交纪律开关 `git_discipline`（B2，默认 `off`）**：`workflow.config.md` 新增开关，控制 `/sflow-apply` 的批次执行方式。`on` 时每批次必须走 **TDD 红-绿**（先写会失败的测试并贴失败输出 → 最小实现 → 测试转绿并贴通过输出 → `git commit`）、且每批次开始前 `git status --porcelain` 必须无输出（脏工作区拒绝进入）；`off`（默认）时不强制先写测试与提交。**开关不改变底线**：批次回执、验证义务、指纹与锚点核对在两种档位下都照做——`off` 只是不强制提交粒度，不是允许跳过验证。批次 commit 会推进 HEAD，但 `baseline.review_base` 不随批次 commit 改变（仍是 DP-2 批准时的起点 sha）。
 - **状态回执 `state.yaml`（B1）**：每个变更目录新增一份 append-only 的机器可读回执文件，与 progress.md 同级，归档时随目录整体移动。它只存两类**不可推导**的事实——**锚点**（`baseline.review_base` 与三组工件指纹，只写一次、重新桥接也不得改写）与**回执**（`dp1.approved` / `dp2.approved` / `batch.N.done` / `verify.passed` / `review.passed` / `debug.attempt.N` / `archive.done`）。**可推导的不存**：大阶段仍由工件内容推断，state.yaml 不写状态枚举——避免"文件说 building、工件说没勾完"这类需要仲裁的矛盾。状态判定的分工因此变为：**大阶段看工件，阶段内位置看回执末条**。存量变更（无 state.yaml）不强制迁移，回退 progress.md 台账末行判定。
+- **机械校验 CLI（B3）**：`bin/sflow.js` 新增三条子命令，把 core.md 里的"机械判定"从文案变成可执行命令——`sflow state`（由工件与回执推导大阶段 / 阶段内位置 / 下一步）、`sflow validate`（校验回执自洽：伪回执、锚点一致性、结构头与主规格一致）、`sflow guard`（契约新鲜度：指纹漂移判"过期"、锚点改写判"审计污染"）、`sflow guard --emit-fingerprints`（DP-2 时生成可直接粘贴的指纹回执行，替代 AI 手抄 sha）。全部**只读**，退出码即结论（`guard` 0=fresh 1=过期 2=污染 3=不适用，`validate` 0=通过 4=失败），使状态判定不再依赖"读散文猜"。CLI 不可用时按文字规则手工执行，不得静默跳过。
+- **design.md 按需生成（B4）**：`design.md` 从"强制第四工件"改为**按需**——只有存在真实技术决策（新增/修改接口或数据结构、引入依赖、二选一选型、跨模块数据流/时序/缓存）时才生成；否则在 proposal 追加「技术决策」节说明"无独立技术决策"。规划工件由"四件"变为 **proposal / specs / tasks 三件为主 + design 按需**。`sflow validate` 对缺 design 只给提示不报错（有「技术决策」节说明即视为合规）。
+- **DP-1 条件化（B4）**：需求简单到无需澄清（一句话能说清，且不命中多模块动点 / 隐性约束 / 跨模块接口契约 / 状态时序敏感）时，可跳过 DP-1，直接进入 `/sflow-contract`。跳过时**必须**写 `dp1.skipped` 回执（含判定理由），是显式记录而非静默省略；`/sflow-contract` 接受 `dp1.approved` 或 `dp1.skipped` 为合法前置。**DP-2 不受影响，仍是唯一硬门禁。**
+- **归档直通合并（B4）**：delta 只含 `## 新增需求`、需求标题与主规格无重合、主规格已存在且格式一致时，可直通合并（跳过 DP-4 等待），但**仍必须先追加 `archive.direct` 再追加 `archive.done`**（终态回执始终是 `archive.done`）并在报告列出合并结果。含 MODIFIED/REMOVED、标题重合、新建主 spec、格式不一致任一 → 仍走 DP-4 人工确认。
+- **方法论与长文拆分（B4）**：为控制随会话加载的上下文体积，`core.md` 的提交纪律正文本体移入 `references/git-discipline.md`（仅 `/sflow-apply` 加载）、机械校验 CLI 正文本体移入 `references/mechanical-cli.md`（仅 start/contract/apply 加载）、归档直通判定移入 `sflow-archive/SKILL.md`；`spec-methodology.md` 拆出 `references/spec-checklist.md`（A/B/C/D 逐条清单按需加载）。`core.md` 保持 < 20KB。
 - **锚点完整性核对**：`/sflow-apply` 每批次开始前除指纹比对外，新增核对 `baseline.review_base` 未被改写。锚点被改写判为**审计污染**（比契约过期更严重——它是绕过而不是意外），立即停止执行并呈报。
 - **调试计数机械化**：DP-3 的"连续 3 次失败"改由 `counters.debug_attempts` 计数（`/sflow-debug` 每次失败 +1，通过或换方向归零），不再靠人眼数台账段落。
 - **范围比对排除流程产物**：`git diff` 比对统一排除变更工件目录本身（`:(exclude)openspec/changes/<change-name>`）——工件、progress.md、state.yaml 是流程产物，不是业务改动。
