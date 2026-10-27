@@ -75,11 +75,11 @@ sflow init
 
 ## 支持的目标
 
-默认安装到 `~/.agents/skills/`；指定目标用 `--target`，路径规则为 `~/.<target>/skills/`（例外见下）：
+路径规则为 `~/.<target>/skills/`（例外见下），指定目标用 `--target`：
 
 | 目标             | 目录                   | 命令                            |
 | ---------------- | ---------------------- | ------------------------------- |
-| agents（默认）   | `~/.agents/skills/`    | `sflow init`                    |
+| agents           | `~/.agents/skills/`    | `sflow init --target agents`    |
 | claude           | `~/.claude/skills/`    | `sflow init --target claude`    |
 | codex            | `~/.codex/skills/`     | `sflow init --target codex`     |
 | workbuddy        | `~/.workbuddy/skills/` | `sflow init --target workbuddy` |
@@ -87,13 +87,27 @@ sflow init
 | opencode（例外） | `~/.config/skills/`    | `sflow init --target opencode`  |
 | 任意目录         | 自定义路径             | `sflow init --dir <path>`       |
 
+**不带 `--target` / `--dir` 时不会猜错地方**：`init` 会先探测本机哪些客户端目录已经装过 `sflow-*`，把它们**全部同步一遍**；一处都没装过才回落到默认目标 `agents` 做首次安装。想一次性铺满全部 6 个目录用 `--all`。
+
+每次安装会在目标目录写 `.sflow-install.json` 清单（版本 / 时间 / 技能列表），下次 `init` 据此播报真实版本变化，例如：
+
+```text
+目标：workbuddy  C:\Users\song\.workbuddy\skills
+  ✔ sflow-apply
+  ...
+  版本：v0.1.3 → v0.2.1（8 条技能）
+```
+
+复制前会清理目标目录里源模板已不存在的孤儿文件，避免跨版本升级时新旧文件混杂（`sflow-start/assets/` 等生成物除外，它们由安装时重新生成）。
+
 ## 使用方式（三步上手）
 
 **第 1 步：安装技能（一次性，无需进项目）**
 
 ```bash
-npx @eddadd/sflow init                  # 默认安装到 ~/.agents/skills/
-npx @eddadd/sflow init --target claude  # 指定客户端
+npx @eddadd/sflow init                  # 探测已装目录并全部同步（首次装到 ~/.agents/skills/）
+npx @eddadd/sflow init --target claude  # 只同步指定客户端
+npx @eddadd/sflow init --all            # 强制写入全部 6 个目标目录
 npx @eddadd/sflow init --config         # 顺带在当前项目生成 workflow.config.md 配置模板
 ```
 
@@ -114,12 +128,12 @@ npx @eddadd/sflow init --config         # 顺带在当前项目生成 workflow.c
 
 ## 命令
 
-| 命令           | 说明                                                              |
-| -------------- | ----------------------------------------------------------------- |
-| `sflow init`   | 安装/覆盖 8 条技能；`--config` 额外生成 `workflow.config.md` 模板 |
-| `sflow update` | 同 `init`，语义化别名                                             |
-| `sflow list`   | 查看各目标的安装状态                                              |
-| `sflow remove` | 卸载已安装的 `sflow-*` 技能                                       |
+| 命令           | 说明                                                                     |
+| -------------- | ------------------------------------------------------------------------ |
+| `sflow init`   | 安装/覆盖 8 条技能：探测已装目录全部同步，无则装到 `agents`；`--config` 额外生成 `workflow.config.md` 模板 |
+| `sflow update` | 同 `init`，语义化别名                                                    |
+| `sflow list`   | 查看各目标的版本、完整度与是否最新                                       |
+| `sflow remove` | 卸载已安装的 `sflow-*` 技能（目标解析同 `init`）                         |
 
 ## 安装后你会得到什么
 
